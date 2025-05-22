@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MLB Bandwagon</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🏟️ MLB Bandwagon</h1>
+            <p>Find your ultimate bandwagon team by following the winners!</p>
+        </header>
+
+        <main>
+            <div class="team-selector">
+                <label for="team-select">Choose your starting team:</label>
+                <select id="team-select">
+                    <option value="">Select a team...</option>
+                </select>
+                <button id="find-bandwagon" disabled>Find My Bandwagon Team</button>
+            </div>
+
+            <div id="loading" class="loading hidden">
+                <div class="spinner"></div>
+                <p>Following the winners...</p>
+            </div>
+
+            <div id="results" class="results hidden">
+                <h2>Your Bandwagon Journey</h2>
+                <div id="team-chain"></div>
+                <div id="final-team"></div>
+            </div>
+        </main>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
