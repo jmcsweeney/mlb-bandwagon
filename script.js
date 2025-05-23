@@ -43,6 +43,8 @@ class MLBBandwagon {
         
         this.scheduleCache = new Map();
         this.teamInfoCache = new Map();
+        this.allTeams = [];
+        this.randomizerInterval = null;
         
         this.init();
     }
@@ -64,6 +66,8 @@ class MLBBandwagon {
                 (team.league.id === 103 || team.league.id === 104)
             );
             teams.sort((a, b) => a.name.localeCompare(b.name));
+            
+            this.allTeams = teams; // Store teams for randomizer
             
             teams.forEach(team => {
                 const option = document.createElement('option');
@@ -92,17 +96,17 @@ class MLBBandwagon {
 
         this.currentTeamId = startingTeamId;
         this.updateAccentColor(startingTeamId);
-        this.showLoading();
+        this.startRandomizer();
         
         try {
             const bandwagonJourney = await this.traceBandwagon(startingTeamId);
+            this.stopRandomizer();
             this.displayResults(bandwagonJourney);
         } catch (error) {
             console.error('Error finding bandwagon team:', error);
+            this.stopRandomizer();
             alert('Sorry, there was an error finding your bandwagon team. Please try again.');
         }
-        
-        this.hideLoading();
     }
 
     async traceBandwagon(startingTeamId) {
@@ -122,7 +126,10 @@ class MLBBandwagon {
             
             if (games.length === 0) break;
             
+            // Collect wins during this team's tenure
+            const wins = [];
             let foundLoss = false;
+            
             for (const game of games) {
                 if (!game.teamWon) {
                     const opponentTeam = await this.getTeamInfo(game.opponentTeamId);
@@ -130,7 +137,8 @@ class MLBBandwagon {
                         losingTeam: currentTeam,
                         winningTeam: opponentTeam,
                         gameDate: game.gameDate,
-                        score: game.score
+                        score: game.score,
+                        wins: wins // Include wins during this team's tenure
                     };
                     
                     journey.push(journeyStep);
@@ -140,6 +148,15 @@ class MLBBandwagon {
                     currentDate = this.addDays(game.gameDate, 1);
                     foundLoss = true;
                     break;
+                } else {
+                    // This is a win - collect opponent info
+                    const opponentTeam = await this.getTeamInfo(game.opponentTeamId);
+                    wins.push({
+                        gameDate: game.gameDate,
+                        opponent: opponentTeam,
+                        score: game.score,
+                        isHome: game.isHome
+                    });
                 }
             }
             
@@ -254,6 +271,37 @@ class MLBBandwagon {
         const date = new Date(dateString);
         date.setDate(date.getDate() + days);
         return date.toISOString().split('T')[0];
+    }
+
+    startRandomizer() {
+        this.finalTeam.innerHTML = `
+            <h3>Finding Your Bandwagon Team...</h3>
+            <div class="final-team-display">
+                <img id="randomizer-logo" src="${this.getTeamLogoUrl(108)}" alt="Team logo" class="final-team-logo randomizer-fade">
+            </div>
+        `;
+        this.results.classList.remove('hidden');
+        
+        let currentIndex = 0;
+        this.randomizerInterval = setInterval(() => {
+            if (this.allTeams.length > 0) {
+                const randomTeam = this.allTeams[currentIndex % this.allTeams.length];
+                const logo = document.getElementById('randomizer-logo');
+                
+                if (logo) {
+                    logo.src = this.getTeamLogoUrl(randomTeam.id);
+                    logo.alt = `${randomTeam.name} logo`;
+                }
+                currentIndex++;
+            }
+        }, 150);
+    }
+    
+    stopRandomizer() {
+        if (this.randomizerInterval) {
+            clearInterval(this.randomizerInterval);
+            this.randomizerInterval = null;
+        }
     }
 
     displayResults(data) {
@@ -374,9 +422,36 @@ class MLBBandwagon {
     
     updateAccentColor(teamId) {
         const teamColor = this.teamColors[teamId] || '#4ade80';
-        document.documentElement.style.setProperty('--accent-color', teamColor);
-        document.documentElement.style.setProperty('--accent-color-light', teamColor + '33');
-        document.documentElement.style.setProperty('--accent-color-dark', teamColor + '66');
+        
+        // Ensure the accent color is bright enough for readability
+        const brightColor = this.ensureReadableColor(teamColor);
+        
+        document.documentElement.style.setProperty('--accent-color', brightColor);
+        document.documentElement.style.setProperty('--accent-color-light', brightColor + '33');
+        document.documentElement.style.setProperty('--accent-color-dark', brightColor + '66');
+    }
+    
+    ensureReadableColor(hexColor) {
+        // Convert hex to RGB
+        const hex = hexColor.replace('#', '');
+        const r = parseInt(hex.substr(0, 2), 16);
+        const g = parseInt(hex.substr(2, 2), 16);
+        const b = parseInt(hex.substr(4, 2), 16);
+        
+        // Calculate luminance
+        const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+        
+        // If too dark, brighten it
+        if (luminance < 0.4) {
+            const factor = 0.4 / luminance;
+            const newR = Math.min(255, Math.round(r * factor * 1.5));
+            const newG = Math.min(255, Math.round(g * factor * 1.5));
+            const newB = Math.min(255, Math.round(b * factor * 1.5));
+            
+            return `#${newR.toString(16).padStart(2, '0')}${newG.toString(16).padStart(2, '0')}${newB.toString(16).padStart(2, '0')}`;
+        }
+        
+        return hexColor;
     }
     
     renderJourneySteps() {
@@ -391,19 +466,61 @@ class MLBBandwagon {
             const stepElement = document.createElement('div');
             stepElement.className = 'team-step';
             
+            const winsCount = step.wins ? step.wins.length : 0;
+            
             stepElement.innerHTML = `
-                <div class="team-info">
-                    <img src="${this.getTeamLogoUrl(step.losingTeam.id)}" alt="${step.losingTeam.name} logo" class="team-logo">
-                    <div class="team-details">
-                        <div class="team-name">${step.losingTeam.name}</div>
-                        <div class="game-info">Lost to ${step.winningTeam.name} on ${step.gameDate} (${step.score})</div>
+                <div class="step-main">
+                    <div class="team-info">
+                        <img src="${this.getTeamLogoUrl(step.losingTeam.id)}" alt="${step.losingTeam.name} logo" class="team-logo">
+                        <div class="team-details">
+                            <div class="team-name">${step.losingTeam.name}</div>
+                            <div class="game-info">Lost to ${step.winningTeam.name} on ${step.gameDate} (${step.score})</div>
+                            ${winsCount > 0 ? `<div class="wins-toggle" data-step-index="${index}">Show wins ▼</div>` : `<div class="no-wins">(no wins)</div>`}
+                        </div>
                     </div>
                 </div>
-                ${index < stepsToShow.length - 1 ? '<div class="arrow">↓</div>' : ''}
+                <div class="wins-submenu" id="wins-${index}" style="display: none;">
+                    ${step.wins && step.wins.length > 0 ? this.renderWinsSubmenu(step.wins) : ''}
+                </div>
             `;
             
             journeySteps.appendChild(stepElement);
+            
+            // Add click handler for wins toggle
+            if (winsCount > 0) {
+                const winsToggle = stepElement.querySelector('.wins-toggle');
+                const winsSubmenu = stepElement.querySelector('.wins-submenu');
+                
+                winsToggle.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const isExpanded = winsSubmenu.style.display !== 'none';
+                    
+                    if (isExpanded) {
+                        winsSubmenu.style.display = 'none';
+                        winsToggle.innerHTML = `Show wins ▼`;
+                        winsToggle.classList.remove('expanded');
+                    } else {
+                        winsSubmenu.style.display = 'block';
+                        winsToggle.innerHTML = `Hide wins ▲`;
+                        winsToggle.classList.add('expanded');
+                    }
+                });
+            }
         });
+    }
+    
+    renderWinsSubmenu(wins) {
+        return wins.map(win => `
+            <div class="win-game">
+                <div class="win-game-info">
+                    <img src="${this.getTeamLogoUrl(win.opponent.id)}" alt="${win.opponent.name} logo" class="win-opponent-logo">
+                    <div class="win-details">
+                        <div class="win-opponent">${win.isHome ? 'vs' : '@'} ${win.opponent.name}</div>
+                        <div class="win-date">${win.gameDate} - Won ${win.score}</div>
+                    </div>
+                </div>
+            </div>
+        `).join('');
     }
     
     toggleJourneyView() {
