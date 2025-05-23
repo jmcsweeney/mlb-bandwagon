@@ -234,6 +234,16 @@ header p {
     font-weight: 400;
 }
 
+.game-info a {
+    color: #ffffff;
+    text-decoration: none;
+    font-weight: 700;
+}
+
+.game-info a:hover {
+    color: var(--accent-color);
+}
+
 .arrow {
     font-size: 1.75rem;
     color: var(--accent-color);
@@ -630,6 +640,129 @@ header p {
     font-weight: 500;
 }
 
+.win-date a {
+    color: #ffffff;
+    text-decoration: none;
+    font-weight: 700;
+}
+
+.win-date a:hover {
+    color: var(--accent-color);
+}
+
+.gameday-embed {
+    margin-top: 2rem;
+    padding: 1.5rem;
+    background: rgba(15, 15, 15, 0.8);
+    border-radius: 16px;
+    border: 1px solid rgba(255,255,255,0.1);
+}
+
+.gameday-embed h4 {
+    margin-bottom: 1rem;
+    font-size: 1.2rem;
+    text-align: center;
+}
+
+.live-game-link {
+    color: #ffffff;
+    text-decoration: none;
+    font-weight: 700;
+}
+
+.live-game-link:hover {
+    color: var(--accent-color);
+}
+
+.game-card {
+    background: rgba(25, 25, 25, 0.9);
+    border-radius: 16px;
+    padding: 1.5rem;
+    border: 1px solid rgba(255,255,255,0.1);
+}
+
+.game-matchup {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+    gap: 1rem;
+}
+
+.team-side {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex: 1;
+}
+
+.home-team {
+    flex-direction: row-reverse;
+    text-align: right;
+}
+
+.game-team-logo {
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
+    border-radius: 50%;
+    background: #ffffff;
+    padding: 4px;
+    border: 2px solid rgba(255,255,255,0.1);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+.team-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+}
+
+.team-side .team-name {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: #ffffff;
+}
+
+.team-record {
+    font-size: 0.75rem;
+    color: #a0a0a0;
+}
+
+.team-score {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--accent-color);
+    min-width: 40px;
+    text-align: center;
+}
+
+.game-center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    flex-shrink: 0;
+}
+
+.game-status {
+    font-size: 0.8rem;
+    color: var(--accent-color);
+    font-weight: 600;
+    text-align: center;
+    background: var(--accent-color-light);
+    padding: 0.25rem 0.75rem;
+    border-radius: 8px;
+    border: 1px solid var(--accent-color-dark);
+}
+
+.inning-info {
+    font-size: 0.75rem;
+    color: #a0a0a0;
+    text-align: center;
+}
+
+
 @media (max-width: 768px) {
     .container {
         padding: 1.5rem;
@@ -696,6 +829,25 @@ header p {
     
     #final-team {
         padding: 2.5rem 1.5rem;
+    }
+    
+    .game-matchup {
+        flex-direction: column;
+        gap: 1.5rem;
+    }
+    
+    .team-side {
+        justify-content: center;
+        width: 100%;
+    }
+    
+    .home-team {
+        flex-direction: row;
+        text-align: left;
+    }
+    
+    .game-center {
+        order: -1;
     }
 }
 

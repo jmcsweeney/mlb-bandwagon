@@ -119,7 +119,7 @@ class MLBBandwagon {
         try {
             const bandwagonJourney = await this.traceBandwagon(startingTeamId);
             this.stopRandomizer();
-            this.displayResults(bandwagonJourney);
+            await this.displayResults(bandwagonJourney);
         } catch (error) {
             console.error('Error finding bandwagon team:', error);
             this.stopRandomizer();
@@ -156,6 +156,8 @@ class MLBBandwagon {
                         winningTeam: opponentTeam,
                         gameDate: game.gameDate,
                         score: game.score,
+                        gameId: game.gameId,
+                        gamePk: game.gamePk,
                         wins: wins // Include wins during this team's tenure
                     };
                     
@@ -173,7 +175,9 @@ class MLBBandwagon {
                         gameDate: game.gameDate,
                         opponent: opponentTeam,
                         score: game.score,
-                        isHome: game.isHome
+                        isHome: game.isHome,
+                        gameId: game.gameId,
+                        gamePk: game.gamePk
                     });
                 }
             }
@@ -243,7 +247,9 @@ class MLBBandwagon {
                                 score: teamIsHome ? 
                                     `${homeTeam.score}-${awayTeam.score}` : 
                                     `${awayTeam.score}-${homeTeam.score}`,
-                                isHome: teamIsHome
+                                isHome: teamIsHome,
+                                gameId: game.gamePk,
+                                gamePk: game.gamePk
                             });
                         }
                     }
@@ -324,7 +330,48 @@ class MLBBandwagon {
         }
     }
 
-    displayResults(data) {
+    async displayResults(data) {
+        // Check for active game
+        const activeGame = await this.getActiveGame(data.finalTeam.id);
+        
+        let gameEmbedHtml = '';
+        if (activeGame) {
+            const inningInfo = activeGame.inning && activeGame.inningState ? 
+                `${activeGame.inningState} ${activeGame.inning}` : '';
+            
+            gameEmbedHtml = `
+                <div class="gameday-embed">
+                    <h4><a href="https://www.mlb.com/gameday/${activeGame.gamePk}" target="_blank" rel="noopener noreferrer" class="live-game-link">Live Game</a></h4>
+                    <div class="game-card">
+                        <div class="game-matchup">
+                            <div class="team-side away-team">
+                                <img src="${this.getTeamLogoUrl(activeGame.awayTeam.id)}" alt="${activeGame.awayTeam.name} logo" class="game-team-logo">
+                                <div class="team-info">
+                                    <div class="team-name">${activeGame.awayTeam.name}</div>
+                                    <div class="team-record">Away</div>
+                                </div>
+                                <div class="team-score">${activeGame.awayTeam.score}</div>
+                            </div>
+                            
+                            <div class="game-center">
+                                <div class="game-status">${activeGame.status}</div>
+                                ${inningInfo ? `<div class="inning-info">${inningInfo}</div>` : ''}
+                            </div>
+                            
+                            <div class="team-side home-team">
+                                <div class="team-score">${activeGame.homeTeam.score}</div>
+                                <div class="team-info">
+                                    <div class="team-name">${activeGame.homeTeam.name}</div>
+                                    <div class="team-record">Home</div>
+                                </div>
+                                <img src="${this.getTeamLogoUrl(activeGame.homeTeam.id)}" alt="${activeGame.homeTeam.name} logo" class="game-team-logo">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
         this.finalTeam.innerHTML = `
             <h3>Always Been A Fan Of The:</h3>
             <div class="final-team-display">
@@ -333,6 +380,7 @@ class MLBBandwagon {
                 </a>
                 <div class="final-team-name">${data.finalTeam.name}</div>
             </div>
+            ${gameEmbedHtml}
         `;
     }
     
@@ -496,7 +544,7 @@ class MLBBandwagon {
                         <img src="${this.getTeamLogoUrl(step.losingTeam.id)}" alt="${step.losingTeam.name} logo" class="team-logo">
                         <div class="team-details">
                             <div class="team-name">${step.losingTeam.name}</div>
-                            <div class="game-info">Lost to ${step.winningTeam.name} on ${step.gameDate} (${step.score})</div>
+                            <div class="game-info">Lost to ${step.winningTeam.name} on ${step.gameDate} (<a href="https://www.mlb.com/gameday/${step.gamePk}" target="_blank" rel="noopener noreferrer">${step.score}</a>)</div>
                             ${winsCount > 0 ? `<div class="wins-toggle" data-step-index="${index}">Show wins ▼</div>` : `<div class="no-wins">(no wins)</div>`}
                         </div>
                     </div>
@@ -538,7 +586,7 @@ class MLBBandwagon {
                     <img src="${this.getTeamLogoUrl(win.opponent.id)}" alt="${win.opponent.name} logo" class="win-opponent-logo">
                     <div class="win-details">
                         <div class="win-opponent">${win.isHome ? 'vs' : '@'} ${win.opponent.name}</div>
-                        <div class="win-date">${win.gameDate} - Won ${win.score}</div>
+                        <div class="win-date">${win.gameDate} - <a href="https://www.mlb.com/gameday/${win.gamePk}" target="_blank" rel="noopener noreferrer">Won ${win.score}</a></div>
                     </div>
                 </div>
             </div>
@@ -565,6 +613,51 @@ class MLBBandwagon {
 
     getTeamColor(teamId) {
         return this.teamColors[teamId] || '#4ade80';
+    }
+
+    async getActiveGame(teamId) {
+        try {
+            const today = new Date().toISOString().split('T')[0];
+            const response = await fetch(
+                `https://statsapi.mlb.com/api/v1/schedule/games/?sportId=1&date=${today}&teamId=${teamId}&hydrate=team,linescore`
+            );
+            const data = await response.json();
+            
+            if (data.dates && data.dates.length > 0) {
+                for (const date of data.dates) {
+                    for (const game of date.games) {
+                        // Check if game is actively in progress (live only)
+                        const gameStatus = game.status.statusCode;
+                        
+                        // Only show games that are truly live/in progress
+                        // I = In Progress, exclude P = Pre-Game
+                        if (gameStatus === 'I') {
+                            return {
+                                gamePk: game.gamePk,
+                                status: game.status.detailedState,
+                                homeTeam: {
+                                    id: game.teams.home.team.id,
+                                    name: game.teams.home.team.name,
+                                    score: game.teams.home.score || 0
+                                },
+                                awayTeam: {
+                                    id: game.teams.away.team.id,
+                                    name: game.teams.away.team.name,
+                                    score: game.teams.away.score || 0
+                                },
+                                inning: game.linescore ? game.linescore.currentInning : null,
+                                inningState: game.linescore ? game.linescore.inningState : null,
+                                gameTime: game.gameDate
+                            };
+                        }
+                    }
+                }
+            }
+            return null;
+        } catch (error) {
+            console.error('Error checking for active game:', error);
+            return null;
+        }
     }
 
     getTeamSlug(teamName) {
