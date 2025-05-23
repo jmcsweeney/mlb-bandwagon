@@ -7,6 +7,39 @@ class MLBBandwagon {
         this.teamChain = document.getElementById('team-chain');
         this.finalTeam = document.getElementById('final-team');
         
+        this.teamColors = {
+            108: '#C4CED4', // Angels
+            109: '#003263', // Diamondbacks
+            110: '#13274F', // Orioles
+            111: '#BD3039', // Red Sox
+            112: '#0E3386', // Cubs
+            113: '#C6011F', // Reds
+            114: '#0C2340', // Guardians
+            115: '#C4CED4', // Rockies
+            116: '#0C2C56', // Tigers
+            117: '#006341', // Astros
+            118: '#004687', // Royals
+            119: '#FF6600', // Marlins
+            120: '#182444', // Brewers
+            121: '#002B5C', // Twins
+            133: '#FF5910', // Athletics
+            134: '#E31837', // Pirates
+            135: '#002D62', // Padres
+            136: '#005A2B', // Mariners
+            137: '#C4CED4', // Giants
+            138: '#003278', // Cardinals
+            139: '#092C5C', // Rays
+            140: '#003278', // Rangers
+            141: '#134A8E', // Blue Jays
+            142: '#002D62', // Twins
+            143: '#C4161C', // Phillies
+            144: '#CE1141', // Braves
+            145: '#AB0003', // White Sox
+            146: '#FF6600', // Marlins
+            147: '#1E22AA', // Yankees
+            158: '#002D62'  // Brewers
+        };
+        
         this.init();
     }
 
@@ -53,6 +86,8 @@ class MLBBandwagon {
         const startingTeamId = this.teamSelect.value;
         if (!startingTeamId) return;
 
+        this.currentTeamId = startingTeamId;
+        this.updateAccentColor(startingTeamId);
         this.showLoading();
         
         try {
@@ -87,6 +122,8 @@ class MLBBandwagon {
             
             const winningTeam = await this.getTeamInfo(nextLoss.winningTeamId);
             const losingTeam = await this.getTeamInfo(currentTeamId);
+            
+            this.showOpposingTeam(winningTeam);
             
             journey.push({
                 losingTeam: losingTeam,
@@ -165,26 +202,52 @@ class MLBBandwagon {
 
     displayResults(data) {
         this.teamChain.innerHTML = '';
+        this.currentJourney = data.journey;
+        this.showingAll = false;
         
-        const totalSteps = data.journey.length;
-        const showExpanded = totalSteps <= 5;
-        const stepsToShow = showExpanded ? data.journey : data.journey.slice(-5);
+        const container = document.createElement('div');
+        container.className = 'journey-container';
         
-        if (!showExpanded) {
-            const expandButton = document.createElement('div');
-            expandButton.className = 'expand-button';
-            expandButton.innerHTML = `
-                <button id="expand-journey">Show Full Journey (${totalSteps} steps) ▼</button>
-                <div class="journey-summary">
-                    Showing last 5 steps of ${totalSteps} total
-                </div>
+        if (data.journey.length > 5) {
+            const expandControls = document.createElement('div');
+            expandControls.className = 'expand-controls';
+            expandControls.innerHTML = `
+                <span class="journey-info">Showing last 5 of ${data.journey.length} steps</span>
+                <button id="expand-journey" class="expand-btn">Show All ▼</button>
             `;
-            this.teamChain.appendChild(expandButton);
+            container.appendChild(expandControls);
             
-            expandButton.querySelector('#expand-journey').addEventListener('click', () => {
-                this.displayFullJourney(data.journey);
+            expandControls.querySelector('#expand-journey').addEventListener('click', () => {
+                this.toggleJourneyView();
             });
         }
+        
+        const journeySteps = document.createElement('div');
+        journeySteps.className = 'journey-steps';
+        journeySteps.id = 'journey-steps';
+        container.appendChild(journeySteps);
+        
+        this.teamChain.appendChild(container);
+        this.renderJourneySteps();
+        
+        this.finalTeam.innerHTML = `
+            <h3>Your Bandwagon Team:</h3>
+            <div class="final-team-display">
+                <img src="${this.getTeamLogoUrl(data.finalTeam.id)}" alt="${data.finalTeam.name} logo" class="final-team-logo pulse">
+                <div class="final-team-name">${data.finalTeam.name}</div>
+            </div>
+        `;
+        
+        this.results.classList.remove('hidden');
+    }
+    
+    renderJourneySteps() {
+        const journeySteps = document.getElementById('journey-steps');
+        journeySteps.innerHTML = '';
+        
+        const stepsToShow = this.showingAll ? 
+            this.currentJourney : 
+            this.currentJourney.slice(-5);
         
         stepsToShow.forEach((step, index) => {
             const stepElement = document.createElement('div');
@@ -202,62 +265,28 @@ class MLBBandwagon {
                 ${index < stepsToShow.length - 1 ? '<div class="arrow">↓</div>' : ''}
             `;
             
-            this.teamChain.appendChild(stepElement);
+            journeySteps.appendChild(stepElement);
         });
-        
-        this.finalTeam.innerHTML = `
-            <h3>Your Bandwagon Team:</h3>
-            <div class="final-team-display">
-                <img src="${this.getTeamLogoUrl(data.finalTeam.id)}" alt="${data.finalTeam.name} logo" class="final-team-logo pulse">
-                <div class="final-team-name">${data.finalTeam.name}</div>
-            </div>
-        `;
-        
-        this.results.classList.remove('hidden');
     }
     
-    displayFullJourney(journey) {
-        const expandButton = this.teamChain.querySelector('.expand-button');
-        if (expandButton) {
-            expandButton.remove();
+    toggleJourneyView() {
+        this.showingAll = !this.showingAll;
+        this.renderJourneySteps();
+        
+        const expandBtn = document.getElementById('expand-journey');
+        const journeyInfo = document.querySelector('.journey-info');
+        
+        if (expandBtn && journeyInfo) {
+            if (this.showingAll) {
+                expandBtn.innerHTML = 'Show Last 5 \u25b2';
+                journeyInfo.textContent = `Showing all ${this.currentJourney.length} steps`;
+            } else {
+                expandBtn.innerHTML = 'Show All \u25bc';
+                journeyInfo.textContent = `Showing last 5 of ${this.currentJourney.length} steps`;
+            }
         }
-        
-        const collapseButton = document.createElement('div');
-        collapseButton.className = 'expand-button';
-        collapseButton.innerHTML = `
-            <button id="collapse-journey">Show Recent Steps Only ▲</button>
-            <div class="journey-summary">
-                Showing all ${journey.length} steps
-            </div>
-        `;
-        this.teamChain.insertBefore(collapseButton, this.teamChain.firstChild);
-        
-        collapseButton.querySelector('#collapse-journey').addEventListener('click', () => {
-            this.displayResults({ journey, finalTeam: this.currentFinalTeam });
-        });
-        
-        const existingSteps = this.teamChain.querySelectorAll('.team-step');
-        existingSteps.forEach(step => step.remove());
-        
-        journey.forEach((step, index) => {
-            const stepElement = document.createElement('div');
-            stepElement.className = 'team-step fade-in';
-            stepElement.style.animationDelay = `${index * 0.05}s`;
-            
-            stepElement.innerHTML = `
-                <div class="team-info">
-                    <img src="${this.getTeamLogoUrl(step.losingTeam.id)}" alt="${step.losingTeam.name} logo" class="team-logo">
-                    <div class="team-details">
-                        <div class="team-name">${step.losingTeam.name}</div>
-                        <div class="game-info">Lost to ${step.winningTeam.name} on ${step.gameDate} (${step.score})</div>
-                    </div>
-                </div>
-                ${index < journey.length - 1 ? '<div class="arrow">↓</div>' : ''}
-            `;
-            
-            this.teamChain.appendChild(stepElement);
-        });
     }
+    
 
     showLoading() {
         this.loading.classList.remove('hidden');
@@ -282,9 +311,22 @@ class MLBBandwagon {
         progressDiv.className = 'progress-display';
         progressDiv.innerHTML = `
             <h3>Following the journey...</h3>
-            <div class="current-team-display">
-                <img id="current-team-logo" src="" alt="" class="current-team-logo">
-                <div id="current-team-name" class="current-team-name"></div>
+            <div class="team-battle">
+                <div class="team-side your-team">
+                    <div class="team-label">YOUR PERFECT TEAM</div>
+                    <div class="team-display">
+                        <img id="current-team-logo" src="" alt="" class="battle-team-logo">
+                        <div id="current-team-name" class="battle-team-name"></div>
+                    </div>
+                </div>
+                <div class="vs-divider">VS</div>
+                <div class="team-side opposing-team">
+                    <div class="team-label">THOSE DASTARDLY OTHERS</div>
+                    <div class="team-display">
+                        <img id="opposing-team-logo" src="" alt="" class="battle-team-logo">
+                        <div id="opposing-team-name" class="battle-team-name"></div>
+                    </div>
+                </div>
             </div>
         `;
         
@@ -296,22 +338,63 @@ class MLBBandwagon {
         const name = document.getElementById('current-team-name');
         
         if (logo && name) {
-            logo.src = this.getTeamLogoUrl(team.id);
-            logo.alt = `${team.name} logo`;
-            name.textContent = team.name;
+            logo.style.opacity = '0';
+            name.style.opacity = '0';
             
-            logo.classList.add('team-highlight');
-            setTimeout(() => logo.classList.remove('team-highlight'), 800);
+            setTimeout(() => {
+                logo.src = this.getTeamLogoUrl(team.id);
+                logo.alt = `${team.name} logo`;
+                name.textContent = team.name;
+                
+                logo.style.opacity = '1';
+                name.style.opacity = '1';
+                logo.classList.add('team-highlight');
+                setTimeout(() => logo.classList.remove('team-highlight'), 800);
+            }, 150);
+        }
+    }
+    
+    showOpposingTeam(team) {
+        const logo = document.getElementById('opposing-team-logo');
+        const name = document.getElementById('opposing-team-name');
+        
+        if (logo && name) {
+            logo.style.opacity = '0';
+            name.style.opacity = '0';
+            
+            setTimeout(() => {
+                logo.src = this.getTeamLogoUrl(team.id);
+                logo.alt = `${team.name} logo`;
+                name.textContent = team.name;
+                
+                logo.style.opacity = '1';
+                name.style.opacity = '1';
+                logo.classList.add('opposing-highlight');
+                setTimeout(() => logo.classList.remove('opposing-highlight'), 800);
+            }, 300);
         }
     }
 
     async animateTeamTransition(losingTeam, winningTeam) {
         return new Promise(resolve => {
             setTimeout(() => {
+                this.currentTeamId = winningTeam.id;
+                this.updateAccentColor(winningTeam.id);
                 this.showCurrentTeam(winningTeam);
                 resolve();
             }, 400);
         });
+    }
+    
+    updateAccentColor(teamId) {
+        const teamColor = this.teamColors[teamId] || '#4ade80';
+        document.documentElement.style.setProperty('--accent-color', teamColor);
+        document.documentElement.style.setProperty('--accent-color-light', teamColor + '33');
+        document.documentElement.style.setProperty('--accent-color-dark', teamColor + '66');
+    }
+    
+    getTeamColor(teamId) {
+        return this.teamColors[teamId] || '#4ade80';
     }
 }
 

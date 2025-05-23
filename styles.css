@@ -1,5 +1,11 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
+:root {
+    --accent-color: #4ade80;
+    --accent-color-light: #4ade8033;
+    --accent-color-dark: #4ade8066;
+}
+
 * {
     margin: 0;
     padding: 0;
@@ -88,13 +94,13 @@ header p {
 
 #team-select:focus {
     outline: none;
-    border-color: #4ade80;
-    box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.2);
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 3px var(--accent-color-light);
     transform: translateY(-1px);
 }
 
 #find-bandwagon {
-    background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+    background: linear-gradient(135deg, var(--accent-color) 0%, var(--accent-color-dark) 100%);
     color: white;
     border: none;
     padding: 1.25rem 2.5rem;
@@ -106,27 +112,12 @@ header p {
     font-family: inherit;
     position: relative;
     overflow: hidden;
-    box-shadow: 0 4px 20px rgba(34, 197, 94, 0.3);
-}
-
-#find-bandwagon::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-    transition: left 0.5s;
-}
-
-#find-bandwagon:hover:not(:disabled)::before {
-    left: 100%;
+    box-shadow: 0 4px 20px var(--accent-color-light);
 }
 
 #find-bandwagon:hover:not(:disabled) {
     transform: translateY(-2px);
-    box-shadow: 0 12px 24px rgba(34, 197, 94, 0.4);
+    box-shadow: 0 12px 24px var(--accent-color-dark);
 }
 
 #find-bandwagon:disabled {
@@ -151,7 +142,7 @@ header p {
     width: 60px;
     height: 60px;
     border: 4px solid #333333;
-    border-top: 4px solid #4ade80;
+    border-top: 4px solid var(--accent-color);
     border-radius: 50%;
     animation: spin 1s linear infinite;
     margin: 0 auto 1.5rem;
@@ -191,6 +182,7 @@ header p {
     transition: all 0.3s ease;
     position: relative;
     overflow: hidden;
+    min-height: 80px;
 }
 
 .team-step::before {
@@ -200,7 +192,7 @@ header p {
     top: 0;
     width: 4px;
     height: 100%;
-    background: linear-gradient(135deg, #4ade80, #22c55e);
+    background: linear-gradient(135deg, var(--accent-color), var(--accent-color-dark));
 }
 
 .team-info {
@@ -241,7 +233,7 @@ header p {
 
 .arrow {
     font-size: 1.75rem;
-    color: #4ade80;
+    color: var(--accent-color);
     opacity: 0.8;
 }
 
@@ -254,24 +246,8 @@ header p {
     margin-top: 2.5rem;
     position: relative;
     overflow: hidden;
-    border: 1px solid rgba(74, 222, 128, 0.3);
-    box-shadow: 0 0 40px rgba(74, 222, 128, 0.1);
-}
-
-#final-team::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: radial-gradient(circle, rgba(74, 222, 128, 0.1) 0%, transparent 70%);
-    animation: shimmer 3s ease-in-out infinite;
-}
-
-@keyframes shimmer {
-    0%, 100% { transform: rotate(0deg); }
-    50% { transform: rotate(180deg); }
+    border: 1px solid var(--accent-color-light);
+    box-shadow: 0 0 40px var(--accent-color-light);
 }
 
 #final-team h3 {
@@ -280,7 +256,7 @@ header p {
     font-weight: 600;
     position: relative;
     z-index: 1;
-    color: #4ade80;
+    color: var(--accent-color);
 }
 
 .final-team-display {
@@ -299,8 +275,8 @@ header p {
     border-radius: 50%;
     background: white;
     padding: 12px;
-    box-shadow: 0 8px 24px rgba(74, 222, 128, 0.3);
-    border: 3px solid rgba(74, 222, 128, 0.5);
+    box-shadow: 0 8px 24px var(--accent-color-light);
+    border: 3px solid var(--accent-color-dark);
 }
 
 .final-team-name {
@@ -316,82 +292,112 @@ header p {
 }
 
 .progress-display h3 {
-    margin-bottom: 1.5rem;
+    margin-bottom: 2rem;
     color: #ffffff;
     font-weight: 600;
 }
 
-.current-team-display {
+.team-battle {
     display: flex;
-    flex-direction: column;
     align-items: center;
-    gap: 1rem;
+    justify-content: space-between;
+    gap: 2rem;
     padding: 1.5rem;
     background: rgba(30, 30, 30, 0.8);
     border-radius: 20px;
-    margin: 0 auto;
-    max-width: 220px;
-    box-shadow: 0 8px 20px rgba(0,0,0,0.3);
     border: 1px solid rgba(255,255,255,0.1);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.3);
 }
 
-.current-team-logo {
-    width: 70px;
-    height: 70px;
+.team-side {
+    flex: 1;
+    text-align: center;
+}
+
+.team-label {
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    margin-bottom: 1rem;
+    color: #ffffff;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.team-display {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.battle-team-logo {
+    width: 60px;
+    height: 60px;
     object-fit: contain;
     border-radius: 50%;
     background: white;
-    padding: 10px;
+    padding: 8px;
     box-shadow: 0 4px 16px rgba(0,0,0,0.3);
-    transition: transform 0.3s ease;
+    transition: all 0.3s ease;
     border: 2px solid rgba(255,255,255,0.1);
 }
 
-.current-team-name {
+.battle-team-name {
     font-weight: 600;
-    font-size: 1.15rem;
-    color: #ffffff;
-}
-
-.expand-button {
-    text-align: center;
-    margin: 1.5rem 0;
-    padding: 1.5rem;
-    background: rgba(30, 30, 30, 0.6);
-    border-radius: 20px;
-    border: 2px dashed rgba(255,255,255,0.2);
-    transition: all 0.3s ease;
-}
-
-.expand-button:hover {
-    border-color: #4ade80;
-    background: rgba(74, 222, 128, 0.05);
-}
-
-.expand-button button {
-    background: linear-gradient(135deg, #22c55e, #16a34a);
-    color: white;
-    border: none;
-    padding: 1rem 2rem;
-    border-radius: 12px;
-    cursor: pointer;
     font-size: 1rem;
+    color: #ffffff;
+    transition: opacity 0.3s ease;
+}
+
+.vs-divider {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #666666;
+    padding: 0 1rem;
+    opacity: 0.7;
+}
+
+.journey-container {
+    position: relative;
+}
+
+.expand-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding: 0.75rem 1rem;
+    background: rgba(30, 30, 30, 0.6);
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.1);
+}
+
+.expand-btn {
+    background: var(--accent-color-light);
+    color: var(--accent-color);
+    border: 1px solid var(--accent-color-dark);
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.85rem;
     font-weight: 600;
     transition: all 0.3s ease;
     font-family: inherit;
-    box-shadow: 0 4px 16px rgba(34, 197, 94, 0.3);
 }
 
-.expand-button button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(34, 197, 94, 0.4);
+.expand-btn:hover {
+    background: var(--accent-color-dark);
+    border-color: var(--accent-color);
 }
 
-.journey-summary {
-    margin-top: 0.75rem;
+.journey-info {
     font-size: 0.9rem;
     color: #a0a0a0;
-    font-style: italic;
+    font-weight: 500;
+}
+
+.journey-steps {
+    transition: all 0.3s ease;
 }
 
 .hidden {
@@ -425,7 +431,18 @@ header p {
     }
     50% {
         transform: scale(1.1);
-        box-shadow: 0 8px 24px rgba(74, 222, 128, 0.4);
+        box-shadow: 0 8px 24px var(--accent-color-dark);
+    }
+}
+
+@keyframes opposingHighlight {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+    }
+    50% {
+        transform: scale(1.1);
+        box-shadow: 0 8px 24px rgba(255, 68, 68, 0.6);
     }
 }
 
@@ -442,10 +459,14 @@ header p {
     animation: teamHighlight 0.8s ease-in-out;
 }
 
+.opposing-highlight {
+    animation: opposingHighlight 0.8s ease-in-out;
+}
+
 .team-step:hover {
     transform: translateY(-3px);
     box-shadow: 0 12px 28px rgba(0,0,0,0.4);
-    border-color: rgba(74, 222, 128, 0.3);
+    border-color: var(--accent-color-light);
     background: rgba(40, 40, 40, 0.9);
 }
 
@@ -480,13 +501,28 @@ header p {
         transform: rotate(90deg);
     }
     
-    .current-team-display {
-        max-width: 180px;
+    .team-battle {
+        flex-direction: column;
+        gap: 1.5rem;
     }
     
-    .current-team-logo {
-        width: 60px;
-        height: 60px;
+    .vs-divider {
+        transform: rotate(90deg);
+        font-size: 1.2rem;
+    }
+    
+    .battle-team-logo {
+        width: 50px;
+        height: 50px;
+    }
+    
+    .battle-team-name {
+        font-size: 0.9rem;
+    }
+    
+    .team-label {
+        font-size: 0.7rem;
+        margin-bottom: 0.75rem;
     }
     
     .final-team-logo {
