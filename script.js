@@ -41,8 +41,6 @@ class MLBBandwagon {
             158: '#002D62'  // Brewers
         };
         
-        this.scheduleCache = new Map();
-        this.teamInfoCache = new Map();
         this.allTeams = [];
         this.randomizerInterval = null;
         
@@ -169,19 +167,12 @@ class MLBBandwagon {
     }
 
     async getTeamSchedule(teamId, startDate, endDate) {
-        const cacheKey = `${teamId}-${startDate}-${endDate}`;
-        
-        if (this.scheduleCache.has(cacheKey)) {
-            return this.scheduleCache.get(cacheKey);
-        }
-        
         try {
             const response = await fetch(
                 `https://statsapi.mlb.com/api/v1/schedule/games/?sportId=1&teamId=${teamId}&startDate=${startDate}&endDate=${endDate}&gameType=R`
             );
             const data = await response.json();
             
-            this.scheduleCache.set(cacheKey, data);
             return data;
         } catch (error) {
             console.error('Error fetching team schedule:', error);
@@ -248,21 +239,15 @@ class MLBBandwagon {
     }
 
     async getTeamInfo(teamId) {
-        if (this.teamInfoCache.has(teamId)) {
-            return this.teamInfoCache.get(teamId);
-        }
-        
         try {
             const response = await fetch(`https://statsapi.mlb.com/api/v1/teams/${teamId}`);
             const data = await response.json();
             const teamInfo = data.teams[0];
             
-            this.teamInfoCache.set(teamId, teamInfo);
             return teamInfo;
         } catch (error) {
             console.error('Error getting team info:', error);
             const fallback = { name: 'Unknown Team', id: teamId };
-            this.teamInfoCache.set(teamId, fallback);
             return fallback;
         }
     }
