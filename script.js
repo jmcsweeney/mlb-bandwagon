@@ -334,6 +334,9 @@ class MLBBandwagon {
         // Check for active game
         const activeGame = await this.getActiveGame(data.finalTeam.id);
         
+        // Get current win streak
+        const winStreak = await this.getCurrentWinStreak(data.finalTeam.id);
+        
         let gameEmbedHtml = '';
         if (activeGame) {
             const inningInfo = activeGame.inning && activeGame.inningState ? 
@@ -372,6 +375,41 @@ class MLBBandwagon {
             `;
         }
         
+        let winStreakHtml = '';
+        if (winStreak && winStreak.length > 0) {
+            const showingAllStreak = this.showingAllStreak || false;
+            const streakToShow = showingAllStreak ? 
+                [...winStreak].reverse() : 
+                [...winStreak].slice(-3).reverse();
+                
+            winStreakHtml = `
+                <div class="win-streak-display">
+                    <h4>Current Win Streak: ${winStreak.length} ${winStreak.length === 1 ? 'Game' : 'Games'}</h4>
+                    ${winStreak.length > 3 ? `
+                        <div class="expand-controls">
+                            <span class="journey-info">Showing last 3 of ${winStreak.length} games</span>
+                            <button id="expand-streak" class="expand-btn">${showingAllStreak ? 'Show Last 3 ▲' : 'Show All ▼'}</button>
+                        </div>
+                    ` : ''}
+                    <div class="win-streak-games">
+                        ${streakToShow.map(game => `
+                            <div class="team-step">
+                                <div class="step-main">
+                                    <div class="team-info">
+                                        <img src="${this.getTeamLogoUrl(game.opponent.id)}" alt="${game.opponent.name} logo" class="team-logo">
+                                        <div class="team-details">
+                                            <div class="team-name">${game.opponent.name}</div>
+                                            <div class="game-info">Won ${game.isHome ? 'vs' : '@'} ${game.opponent.name} on ${game.gameDate} (<a href="https://www.mlb.com/gameday/${game.gamePk}" target="_blank" rel="noopener noreferrer">${game.score}</a>)</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+        
         this.finalTeam.innerHTML = `
             <h3>Always Been A Fan Of The:</h3>
             <div class="final-team-display">
@@ -380,8 +418,25 @@ class MLBBandwagon {
                 </a>
                 <div class="final-team-name">${data.finalTeam.name}</div>
             </div>
+            ${winStreakHtml}
             ${gameEmbedHtml}
         `;
+        
+        // Add click handler for win streak expand button
+        if (winStreak && winStreak.length > 3) {
+            const expandBtn = this.finalTeam.querySelector('#expand-streak');
+            if (expandBtn) {
+                expandBtn.addEventListener('click', () => {
+                    this.toggleStreakView(data);
+                });
+            }
+        }
+    }
+    
+    async toggleStreakView(data) {
+        this.showingAllStreak = !this.showingAllStreak;
+        // Re-render the results to update the win streak display
+        await this.displayResults(data);
     }
     
     renderJourneySteps() {
@@ -613,6 +668,43 @@ class MLBBandwagon {
 
     getTeamColor(teamId) {
         return this.teamColors[teamId] || '#4ade80';
+    }
+
+    async getCurrentWinStreak(teamId) {
+        try {
+            const today = new Date().toISOString().split('T')[0];
+            const endDate = today;
+            const currentYear = new Date().getFullYear();
+            const startDate = `${currentYear}-03-01`;
+            
+            const games = this.getAllGamesFromDate(teamId, startDate, endDate);
+            
+            // Get most recent completed games and work backwards to find win streak
+            const recentGames = games.reverse(); // Most recent first
+            const winStreak = [];
+            
+            for (const game of recentGames) {
+                if (game.teamWon) {
+                    const opponentTeam = await this.getTeamInfo(game.opponentTeamId);
+                    winStreak.push({
+                        gameDate: game.gameDate,
+                        opponent: opponentTeam,
+                        score: game.score,
+                        isHome: game.isHome,
+                        gamePk: game.gamePk
+                    });
+                } else {
+                    // First loss breaks the streak
+                    break;
+                }
+            }
+            
+            // Return wins in chronological order (oldest first)
+            return winStreak.reverse();
+        } catch (error) {
+            console.error('Error getting current win streak:', error);
+            return [];
+        }
     }
 
     async getActiveGame(teamId) {
