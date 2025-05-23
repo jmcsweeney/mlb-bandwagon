@@ -295,7 +295,7 @@ class MLBBandwagon {
 
     startRandomizer() {
         this.finalTeam.innerHTML = `
-            <h3>Finding Your Bandwagon Team...</h3>
+            <h3>Finding Your Team...</h3>
             <div class="final-team-display">
                 <img id="randomizer-logo" src="${this.getTeamLogoUrl(108)}" alt="Team logo" class="final-team-logo randomizer-fade">
             </div>
@@ -326,7 +326,7 @@ class MLBBandwagon {
 
     displayResults(data) {
         this.finalTeam.innerHTML = `
-            <h3>Your Bandwagon Team:</h3>
+            <h3>Always Been A Fan Of The:</h3>
             <div class="final-team-display">
                 <img src="${this.getTeamLogoUrl(data.finalTeam.id)}" alt="${data.finalTeam.name} logo" class="final-team-logo pulse">
                 <div class="final-team-name">${data.finalTeam.name}</div>
