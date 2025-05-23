@@ -463,6 +463,36 @@ header p {
     animation: opposingHighlight 0.8s ease-in-out;
 }
 
+@keyframes winnerGlow {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+    }
+    50% {
+        transform: scale(1.1);
+        box-shadow: 0 8px 24px rgba(34, 197, 94, 0.8);
+    }
+}
+
+@keyframes loserFade {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.4;
+        transform: scale(0.95);
+    }
+}
+
+.winner-glow {
+    animation: winnerGlow 0.8s ease-in-out;
+}
+
+.loser-fade {
+    animation: loserFade 0.8s ease-in-out;
+}
+
 .team-step:hover {
     transform: translateY(-3px);
     box-shadow: 0 12px 28px rgba(0,0,0,0.4);

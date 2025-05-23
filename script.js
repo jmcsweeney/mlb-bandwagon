@@ -40,6 +40,9 @@ class MLBBandwagon {
             158: '#002D62'  // Brewers
         };
         
+        this.scheduleCache = new Map();
+        this.teamInfoCache = new Map();
+        
         this.init();
     }
 
@@ -116,26 +119,35 @@ class MLBBandwagon {
             const currentTeam = await this.getTeamInfo(currentTeamId);
             this.showCurrentTeam(currentTeam);
             
-            const nextLoss = await this.findNextLoss(currentTeamId, currentDate, endDate);
+            const games = await this.getAllGamesFromDate(currentTeamId, currentDate, endDate);
             
-            if (!nextLoss) break;
+            if (games.length === 0) break;
             
-            const winningTeam = await this.getTeamInfo(nextLoss.winningTeamId);
-            const losingTeam = await this.getTeamInfo(currentTeamId);
+            let foundLoss = false;
+            for (const game of games) {
+                const opponentTeam = await this.getTeamInfo(game.opponentTeamId);
+                
+                this.showOpposingTeam(opponentTeam);
+                await this.animateGameResult(currentTeam, opponentTeam, game.teamWon);
+                
+                if (!game.teamWon) {
+                    journey.push({
+                        losingTeam: currentTeam,
+                        winningTeam: opponentTeam,
+                        gameDate: game.gameDate,
+                        score: game.score
+                    });
+                    
+                    await this.animateTeamTransition(currentTeam, opponentTeam);
+                    
+                    currentTeamId = game.opponentTeamId;
+                    currentDate = this.addDays(game.gameDate, 1);
+                    foundLoss = true;
+                    break;
+                }
+            }
             
-            this.showOpposingTeam(winningTeam);
-            
-            journey.push({
-                losingTeam: losingTeam,
-                winningTeam: winningTeam,
-                gameDate: nextLoss.gameDate,
-                score: nextLoss.score
-            });
-            
-            await this.animateTeamTransition(losingTeam, winningTeam);
-            
-            currentTeamId = nextLoss.winningTeamId;
-            currentDate = this.addDays(nextLoss.gameDate, 1);
+            if (!foundLoss) break;
         }
         
         const finalTeam = await this.getTeamInfo(currentTeamId);
@@ -143,54 +155,102 @@ class MLBBandwagon {
         return { journey, finalTeam };
     }
 
-    async findNextLoss(teamId, startDate, endDate) {
+    async getTeamSchedule(teamId, startDate, endDate) {
+        const cacheKey = `${teamId}-${startDate}-${endDate}`;
+        
+        if (this.scheduleCache.has(cacheKey)) {
+            return this.scheduleCache.get(cacheKey);
+        }
+        
         try {
             const response = await fetch(
                 `https://statsapi.mlb.com/api/v1/schedule/games/?sportId=1&teamId=${teamId}&startDate=${startDate}&endDate=${endDate}&gameType=R`
             );
             const data = await response.json();
             
+            this.scheduleCache.set(cacheKey, data);
+            return data;
+        } catch (error) {
+            console.error('Error fetching team schedule:', error);
+            return null;
+        }
+    }
+    
+    async getAllGamesFromDate(teamId, startDate, endDate) {
+        try {
+            const data = await this.getTeamSchedule(teamId, startDate, endDate);
+            if (!data) return [];
+            
+            const games = [];
             for (const date of data.dates) {
                 for (const game of date.games) {
-                    if (game.status.statusCode === 'F' && game.gameType === 'R') {
+                    if (game.status.statusCode === 'F' && game.gameType === 'R' && 
+                        new Date(game.gameDate) >= new Date(startDate)) {
                         const homeTeam = game.teams.home;
                         const awayTeam = game.teams.away;
                         
                         const teamIsHome = homeTeam.team.id == teamId;
                         const teamIsAway = awayTeam.team.id == teamId;
                         
-                        if (teamIsHome && homeTeam.score < awayTeam.score) {
-                            return {
-                                winningTeamId: awayTeam.team.id,
+                        if (teamIsHome || teamIsAway) {
+                            const opponentTeamId = teamIsHome ? awayTeam.team.id : homeTeam.team.id;
+                            const teamWon = (teamIsHome && homeTeam.score > awayTeam.score) || 
+                                          (teamIsAway && awayTeam.score > homeTeam.score);
+                            
+                            games.push({
                                 gameDate: game.gameDate.split('T')[0],
-                                score: `${awayTeam.score}-${homeTeam.score}`
-                            };
-                        } else if (teamIsAway && awayTeam.score < homeTeam.score) {
-                            return {
-                                winningTeamId: homeTeam.team.id,
-                                gameDate: game.gameDate.split('T')[0],
-                                score: `${homeTeam.score}-${awayTeam.score}`
-                            };
+                                opponentTeamId,
+                                teamWon,
+                                score: teamIsHome ? 
+                                    `${homeTeam.score}-${awayTeam.score}` : 
+                                    `${awayTeam.score}-${homeTeam.score}`,
+                                isHome: teamIsHome
+                            });
                         }
                     }
                 }
             }
             
-            return null;
+            return games.sort((a, b) => new Date(a.gameDate) - new Date(b.gameDate));
         } catch (error) {
-            console.error('Error finding next loss:', error);
-            return null;
+            console.error('Error getting games:', error);
+            return [];
         }
+    }
+    
+    async findNextLoss(teamId, startDate, endDate) {
+        const games = await this.getAllGamesFromDate(teamId, startDate, endDate);
+        
+        for (const game of games) {
+            if (!game.teamWon) {
+                return {
+                    winningTeamId: game.opponentTeamId,
+                    gameDate: game.gameDate,
+                    score: game.score
+                };
+            }
+        }
+        
+        return null;
     }
 
     async getTeamInfo(teamId) {
+        if (this.teamInfoCache.has(teamId)) {
+            return this.teamInfoCache.get(teamId);
+        }
+        
         try {
             const response = await fetch(`https://statsapi.mlb.com/api/v1/teams/${teamId}`);
             const data = await response.json();
-            return data.teams[0];
+            const teamInfo = data.teams[0];
+            
+            this.teamInfoCache.set(teamId, teamInfo);
+            return teamInfo;
         } catch (error) {
             console.error('Error getting team info:', error);
-            return { name: 'Unknown Team', id: teamId };
+            const fallback = { name: 'Unknown Team', id: teamId };
+            this.teamInfoCache.set(teamId, fallback);
+            return fallback;
         }
     }
 
@@ -375,6 +435,27 @@ class MLBBandwagon {
         }
     }
 
+    async animateGameResult(currentTeam, opponentTeam, teamWon) {
+        return new Promise(resolve => {
+            const currentLogo = document.getElementById('current-team-logo');
+            const opposingLogo = document.getElementById('opposing-team-logo');
+            
+            if (teamWon) {
+                currentLogo.classList.add('winner-glow');
+                opposingLogo.classList.add('loser-fade');
+            } else {
+                currentLogo.classList.add('loser-fade');
+                opposingLogo.classList.add('winner-glow');
+            }
+            
+            setTimeout(() => {
+                if (currentLogo) currentLogo.classList.remove('winner-glow', 'loser-fade');
+                if (opposingLogo) opposingLogo.classList.remove('winner-glow', 'loser-fade');
+                resolve();
+            }, 800);
+        });
+    }
+    
     async animateTeamTransition(losingTeam, winningTeam) {
         return new Promise(resolve => {
             setTimeout(() => {
@@ -382,7 +463,7 @@ class MLBBandwagon {
                 this.updateAccentColor(winningTeam.id);
                 this.showCurrentTeam(winningTeam);
                 resolve();
-            }, 400);
+            }, 200);
         });
     }
     
