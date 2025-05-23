@@ -280,6 +280,11 @@ header p {
     padding: 12px;
     box-shadow: 0 8px 24px var(--accent-color-light);
     border: 3px solid var(--accent-color-dark);
+    transition: transform 0.2s ease;
+}
+
+.final-team-logo:hover {
+    transform: scale(1.1);
 }
 
 .final-team-name {

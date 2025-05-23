@@ -328,7 +328,9 @@ class MLBBandwagon {
         this.finalTeam.innerHTML = `
             <h3>Always Been A Fan Of The:</h3>
             <div class="final-team-display">
-                <img src="${this.getTeamLogoUrl(data.finalTeam.id)}" alt="${data.finalTeam.name} logo" class="final-team-logo pulse">
+                <a href="https://www.mlb.com/${this.getTeamSlug(data.finalTeam.name)}" target="_blank" rel="noopener noreferrer">
+                    <img src="${this.getTeamLogoUrl(data.finalTeam.id)}" alt="${data.finalTeam.name} logo" class="final-team-logo pulse">
+                </a>
                 <div class="final-team-name">${data.finalTeam.name}</div>
             </div>
         `;
@@ -563,6 +565,42 @@ class MLBBandwagon {
 
     getTeamColor(teamId) {
         return this.teamColors[teamId] || '#4ade80';
+    }
+
+    getTeamSlug(teamName) {
+        const slugMap = {
+            'Arizona Diamondbacks': 'dbacks',
+            'Atlanta Braves': 'braves',
+            'Baltimore Orioles': 'orioles',
+            'Boston Red Sox': 'redsox',
+            'Chicago Cubs': 'cubs',
+            'Chicago White Sox': 'whitesox',
+            'Cincinnati Reds': 'reds',
+            'Cleveland Guardians': 'guardians',
+            'Colorado Rockies': 'rockies',
+            'Detroit Tigers': 'tigers',
+            'Houston Astros': 'astros',
+            'Kansas City Royals': 'royals',
+            'Los Angeles Angels': 'angels',
+            'Los Angeles Dodgers': 'dodgers',
+            'Miami Marlins': 'marlins',
+            'Milwaukee Brewers': 'brewers',
+            'Minnesota Twins': 'twins',
+            'New York Mets': 'mets',
+            'New York Yankees': 'yankees',
+            'Oakland Athletics': 'athletics',
+            'Philadelphia Phillies': 'phillies',
+            'Pittsburgh Pirates': 'pirates',
+            'San Diego Padres': 'padres',
+            'San Francisco Giants': 'giants',
+            'Seattle Mariners': 'mariners',
+            'St. Louis Cardinals': 'cardinals',
+            'Tampa Bay Rays': 'rays',
+            'Texas Rangers': 'rangers',
+            'Toronto Blue Jays': 'bluejays',
+            'Washington Nationals': 'nationals'
+        };
+        return slugMap[teamName] || teamName.toLowerCase().replace(/\s+/g, '');
     }
 }
 
