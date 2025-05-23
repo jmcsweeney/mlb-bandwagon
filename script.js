@@ -42,6 +42,7 @@ class MLBBandwagon {
         };
         
         this.allTeams = [];
+        this.allScheduleData = null;
         this.randomizerInterval = null;
         
         this.init();
@@ -49,6 +50,7 @@ class MLBBandwagon {
 
     async init() {
         await this.loadTeams();
+        await this.loadAllSchedules();
         this.setupEventListeners();
     }
 
@@ -75,6 +77,24 @@ class MLBBandwagon {
             });
         } catch (error) {
             console.error('Error loading teams:', error);
+        }
+    }
+
+    async loadAllSchedules() {
+        try {
+            const currentYear = new Date().getFullYear();
+            const startDate = `${currentYear}-03-01`;
+            const endDate = new Date().toISOString().split('T')[0];
+            
+            const response = await fetch(
+                `https://statsapi.mlb.com/api/v1/schedule/games/?sportId=1&startDate=${startDate}&endDate=${endDate}&gameType=R`
+            );
+            const data = await response.json();
+            
+            this.allScheduleData = data;
+        } catch (error) {
+            console.error('Error loading all schedules:', error);
+            this.allScheduleData = null;
         }
     }
 
@@ -120,7 +140,7 @@ class MLBBandwagon {
         
         while (new Date(currentDate) <= new Date(endDate)) {
             const currentTeam = await this.getTeamInfo(currentTeamId);
-            const games = await this.getAllGamesFromDate(currentTeamId, currentDate, endDate);
+            const games = this.getAllGamesFromDate(currentTeamId, currentDate, endDate);
             
             if (games.length === 0) break;
             
@@ -166,23 +186,38 @@ class MLBBandwagon {
         return { journey, finalTeam };
     }
 
-    async getTeamSchedule(teamId, startDate, endDate) {
-        try {
-            const response = await fetch(
-                `https://statsapi.mlb.com/api/v1/schedule/games/?sportId=1&teamId=${teamId}&startDate=${startDate}&endDate=${endDate}&gameType=R`
-            );
-            const data = await response.json();
-            
-            return data;
-        } catch (error) {
-            console.error('Error fetching team schedule:', error);
-            return null;
+    getTeamSchedule(teamId, startDate, endDate) {
+        if (!this.allScheduleData) {
+            console.error('All schedule data not loaded');
+            return { dates: [] };
         }
+        
+        const teamGames = { dates: [] };
+        const startDateObj = new Date(startDate);
+        const endDateObj = new Date(endDate);
+        
+        for (const date of this.allScheduleData.dates) {
+            const dateObj = new Date(date.date);
+            if (dateObj >= startDateObj && dateObj <= endDateObj) {
+                const gamesForTeam = date.games.filter(game => 
+                    game.teams.home.team.id == teamId || game.teams.away.team.id == teamId
+                );
+                
+                if (gamesForTeam.length > 0) {
+                    teamGames.dates.push({
+                        date: date.date,
+                        games: gamesForTeam
+                    });
+                }
+            }
+        }
+        
+        return teamGames;
     }
     
-    async getAllGamesFromDate(teamId, startDate, endDate) {
+    getAllGamesFromDate(teamId, startDate, endDate) {
         try {
-            const data = await this.getTeamSchedule(teamId, startDate, endDate);
+            const data = this.getTeamSchedule(teamId, startDate, endDate);
             if (!data) return [];
             
             const games = [];
@@ -222,8 +257,8 @@ class MLBBandwagon {
         }
     }
     
-    async findNextLoss(teamId, startDate, endDate) {
-        const games = await this.getAllGamesFromDate(teamId, startDate, endDate);
+    findNextLoss(teamId, startDate, endDate) {
+        const games = this.getAllGamesFromDate(teamId, startDate, endDate);
         
         for (const game of games) {
             if (!game.teamWon) {
@@ -304,8 +339,8 @@ class MLBBandwagon {
         journeySteps.innerHTML = '';
         
         const stepsToShow = this.showingAll ? 
-            this.currentJourney : 
-            this.currentJourney.slice(-5);
+            [...this.currentJourney].reverse() : 
+            [...this.currentJourney].slice(-5).reverse();
         
         stepsToShow.forEach((step, index) => {
             const stepElement = document.createElement('div');
@@ -444,8 +479,8 @@ class MLBBandwagon {
         journeySteps.innerHTML = '';
         
         const stepsToShow = this.showingAll ? 
-            this.currentJourney : 
-            this.currentJourney.slice(-5);
+            [...this.currentJourney].reverse() : 
+            [...this.currentJourney].slice(-5).reverse();
         
         stepsToShow.forEach((step, index) => {
             const stepElement = document.createElement('div');
