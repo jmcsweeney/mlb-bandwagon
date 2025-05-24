@@ -44,6 +44,8 @@ class MLBBandwagon {
         this.allTeams = [];
         this.allScheduleData = null;
         this.randomizerInterval = null;
+        this.liveGamePollingInterval = null;
+        this.currentActiveGame = null;
         
         this.init();
     }
@@ -333,6 +335,14 @@ class MLBBandwagon {
     async displayResults(data) {
         // Check for active game
         const activeGame = await this.getActiveGame(data.finalTeam.id);
+        this.currentActiveGame = activeGame;
+        
+        // Start live polling if there's an active game
+        if (activeGame) {
+            this.startLiveGamePolling(data);
+        } else {
+            this.stopLiveGamePolling();
+        }
         
         // Get current win streak
         const winStreak = await this.getCurrentWinStreak(data.finalTeam.id);
@@ -341,6 +351,8 @@ class MLBBandwagon {
         if (activeGame) {
             const inningInfo = activeGame.inning && activeGame.inningState ? 
                 `${activeGame.inningState} ${activeGame.inning}` : '';
+            
+            const live = activeGame.liveData;
             
             gameEmbedHtml = `
                 <div class="gameday-embed">
@@ -359,6 +371,7 @@ class MLBBandwagon {
                             <div class="game-center">
                                 <div class="game-status">${activeGame.status}</div>
                                 ${inningInfo ? `<div class="inning-info">${inningInfo}</div>` : ''}
+                                ${live ? this.renderGameState(live) : ''}
                             </div>
                             
                             <div class="team-side home-team">
@@ -370,6 +383,7 @@ class MLBBandwagon {
                                 <img src="${this.getTeamLogoUrl(activeGame.homeTeam.id)}" alt="${activeGame.homeTeam.name} logo" class="game-team-logo">
                             </div>
                         </div>
+                        ${live ? this.renderDetailedGameInfo(live) : ''}
                     </div>
                 </div>
             `;
@@ -728,6 +742,10 @@ class MLBBandwagon {
                         // I = In Progress, PW = Pre-Game (Warmup), IR = Inning Review, etc.
                         if (gameStatus === 'I' || gameStatus === 'PW' || gameStatus === 'IR' || 
                             gameStatus === 'MA' || gameStatus === 'DR' || gameStatus === 'DI') {
+                            
+                            // Get detailed live data for in-progress games
+                            const liveData = await this.getLiveGameData(game.gamePk);
+                            
                             return {
                                 gamePk: game.gamePk,
                                 status: game.status.detailedState,
@@ -743,7 +761,8 @@ class MLBBandwagon {
                                 },
                                 inning: game.linescore ? game.linescore.currentInning : null,
                                 inningState: game.linescore ? game.linescore.inningState : null,
-                                gameTime: game.gameDate
+                                gameTime: game.gameDate,
+                                liveData: liveData
                             };
                         }
                     }
@@ -756,6 +775,274 @@ class MLBBandwagon {
         }
     }
 
+    async getLiveGameData(gamePk) {
+        try {
+            // Try the live feed endpoint first
+            const response = await fetch(
+                `https://statsapi.mlb.com/api/v1.1/game/${gamePk}/feed/live`
+            );
+            const data = await response.json();
+            
+            console.log('Live game data response:', data); // Debug logging
+            
+            if (!data.liveData) {
+                console.log('No liveData found, trying alternative structure...');
+                return this.extractLiveDataAlternative(data);
+            }
+            
+            const plays = data.liveData.plays;
+            const linescore = data.liveData.linescore;
+            
+            console.log('Current play:', plays?.currentPlay); // Debug logging
+            
+            // Extract current game state
+            const liveGameData = {
+                balls: plays?.currentPlay?.count?.balls || 0,
+                strikes: plays?.currentPlay?.count?.strikes || 0,
+                outs: plays?.currentPlay?.count?.outs || 0,
+                currentBatter: plays?.currentPlay?.matchup?.batter ? {
+                    id: plays.currentPlay.matchup.batter.id,
+                    fullName: plays.currentPlay.matchup.batter.fullName || 'Unknown'
+                } : null,
+                currentPitcher: plays?.currentPlay?.matchup?.pitcher ? {
+                    id: plays.currentPlay.matchup.pitcher.id,
+                    fullName: plays.currentPlay.matchup.pitcher.fullName || 'Unknown'
+                } : null,
+                pitchCount: plays?.currentPlay?.pitchNumber || 0,
+                inning: linescore?.currentInning || null,
+                inningState: linescore?.inningState || null
+            };
+            
+            console.log('Extracted live game data:', liveGameData); // Debug logging
+            return liveGameData;
+        } catch (error) {
+            console.error('Error getting live game data:', error);
+            return null;
+        }
+    }
+    
+    extractLiveDataAlternative(data) {
+        // Try to extract from different possible structures
+        try {
+            const gameData = data.gameData || data;
+            const liveData = data.liveData || {};
+            
+            // Basic fallback with minimal data
+            return {
+                balls: 0,
+                strikes: 0,
+                outs: 0,
+                currentBatter: null,
+                currentPitcher: null,
+                pitchCount: 0,
+                inning: null,
+                inningState: null
+            };
+        } catch (error) {
+            console.error('Error in alternative extraction:', error);
+            return null;
+        }
+    }
+    
+    renderGameState(live) {
+        if (!live) {
+            return `
+                <div class="count-display">
+                    <div class="count-item">
+                        <span class="count-label">Loading live data...</span>
+                    </div>
+                </div>
+            `;
+        }
+        
+        return `
+            <div class="count-display">
+                <div class="count-item">
+                    <span class="count-label">Count</span>
+                    <span class="count-value">${live.balls}-${live.strikes}</span>
+                </div>
+                <div class="count-item">
+                    <span class="count-label">Outs</span>
+                    <span class="count-value">${live.outs}</span>
+                </div>
+            </div>
+        `;
+    }
+    
+    renderDetailedGameInfo(live) {
+        if (!live) {
+            return `
+                <div class="live-game-details">
+                    <div class="loading-live-data">
+                        <p>Loading detailed game data...</p>
+                    </div>
+                </div>
+            `;
+        }
+        
+        const playersHtml = this.renderCurrentPlayers(live);
+        
+        return `
+            <div class="live-game-details">
+                ${playersHtml}
+            </div>
+        `;
+    }
+    
+    renderCurrentPlayers(live) {
+        if (!live.currentBatter && !live.currentPitcher) return '';
+        
+        return `
+            <div class="current-players">
+                ${live.currentBatter ? `
+                    <div class="player-info">
+                        <span class="player-label">Batting:</span>
+                        <span class="player-name">${live.currentBatter.fullName}</span>
+                    </div>
+                ` : ''}
+                ${live.currentPitcher ? `
+                    <div class="player-info">
+                        <span class="player-label">Pitching:</span>
+                        <span class="player-name">${live.currentPitcher.fullName}</span>
+                    </div>
+                ` : ''}
+                ${live.pitchCount > 0 ? `
+                    <div class="player-info">
+                        <span class="player-label">Pitch Count:</span>
+                        <span class="player-name">${live.pitchCount}</span>
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    }
+
+    startLiveGamePolling(data) {
+        // Clear any existing polling
+        this.stopLiveGamePolling();
+        
+        this.liveGamePollingInterval = setInterval(async () => {
+            try {
+                const updatedGame = await this.getActiveGame(data.finalTeam.id);
+                
+                if (updatedGame) {
+                    // Game is still active, update the display
+                    if (this.gameStatusChanged(this.currentActiveGame, updatedGame)) {
+                        this.currentActiveGame = updatedGame;
+                        await this.updateLiveGameDisplay(updatedGame, data);
+                    }
+                } else {
+                    // Game has ended, stop polling and refresh bandwagon if needed
+                    this.stopLiveGamePolling();
+                    await this.handleGameCompletion(data);
+                }
+            } catch (error) {
+                console.error('Error during live game polling:', error);
+            }
+        }, 5000); // Poll every 5 seconds
+    }
+    
+    stopLiveGamePolling() {
+        if (this.liveGamePollingInterval) {
+            clearInterval(this.liveGamePollingInterval);
+            this.liveGamePollingInterval = null;
+        }
+    }
+    
+    gameStatusChanged(oldGame, newGame) {
+        if (!oldGame || !newGame) return true;
+        
+        return oldGame.homeTeam.score !== newGame.homeTeam.score ||
+               oldGame.awayTeam.score !== newGame.awayTeam.score ||
+               oldGame.status !== newGame.status ||
+               oldGame.inning !== newGame.inning ||
+               oldGame.inningState !== newGame.inningState;
+    }
+    
+    async updateLiveGameDisplay(activeGame, data) {
+        const gameEmbedElement = document.querySelector('.gameday-embed');
+        if (!gameEmbedElement) return;
+        
+        const inningInfo = activeGame.inning && activeGame.inningState ? 
+            `${activeGame.inningState} ${activeGame.inning}` : '';
+        
+        const live = activeGame.liveData;
+        
+        gameEmbedElement.innerHTML = `
+            <h4><a href="https://www.mlb.com/gameday/${activeGame.gamePk}" target="_blank" rel="noopener noreferrer" class="live-game-link">Live Game</a></h4>
+            <div class="game-card">
+                <div class="game-matchup">
+                    <div class="team-side away-team">
+                        <img src="${this.getTeamLogoUrl(activeGame.awayTeam.id)}" alt="${activeGame.awayTeam.name} logo" class="game-team-logo">
+                        <div class="team-info">
+                            <div class="team-name">${activeGame.awayTeam.name}</div>
+                            <div class="team-record">Away</div>
+                        </div>
+                        <div class="team-score">${activeGame.awayTeam.score}</div>
+                    </div>
+                    
+                    <div class="game-center">
+                        <div class="game-status">${activeGame.status}</div>
+                        ${inningInfo ? `<div class="inning-info">${inningInfo}</div>` : ''}
+                        ${live ? this.renderGameState(live) : ''}
+                    </div>
+                    
+                    <div class="team-side home-team">
+                        <div class="team-score">${activeGame.homeTeam.score}</div>
+                        <div class="team-info">
+                            <div class="team-name">${activeGame.homeTeam.name}</div>
+                            <div class="team-record">Home</div>
+                        </div>
+                        <img src="${this.getTeamLogoUrl(activeGame.homeTeam.id)}" alt="${activeGame.homeTeam.name} logo" class="game-team-logo">
+                    </div>
+                </div>
+                ${live ? this.renderDetailedGameInfo(live) : ''}
+            </div>
+        `;
+    }
+    
+    async handleGameCompletion(data) {
+        // Reload schedule data to include the just-completed game
+        await this.loadAllSchedules();
+        
+        // Check if the game result affects the bandwagon path
+        const currentTeamId = data.finalTeam.id;
+        const today = new Date().toISOString().split('T')[0];
+        
+        // Check for any new losses since the last bandwagon calculation
+        const recentGames = this.getAllGamesFromDate(currentTeamId, today, today);
+        const newLoss = recentGames.find(game => !game.teamWon);
+        
+        if (newLoss) {
+            // The team lost! Need to extend the bandwagon path
+            const newWinningTeam = await this.getTeamInfo(newLoss.opponentTeamId);
+            
+            // Add a visual indicator that the bandwagon has changed
+            const gameEmbedElement = document.querySelector('.gameday-embed');
+            if (gameEmbedElement) {
+                gameEmbedElement.innerHTML = `
+                    <div class="game-completed-alert">
+                        <h4>🚨 Game Completed - Bandwagon Updated!</h4>
+                        <p>${data.finalTeam.name} lost to ${newWinningTeam.name}!</p>
+                        <p>Your new bandwagon team is: <strong>${newWinningTeam.name}</strong></p>
+                        <button onclick="location.reload()" class="refresh-btn">Refresh to see full updated path</button>
+                    </div>
+                `;
+            }
+        } else {
+            // Team won or no game today, just remove the live game display
+            const gameEmbedElement = document.querySelector('.gameday-embed');
+            if (gameEmbedElement) {
+                gameEmbedElement.remove();
+            }
+            
+            // Refresh win streak display
+            const winStreak = await this.getCurrentWinStreak(data.finalTeam.id);
+            if (winStreak && winStreak.length > 0) {
+                await this.displayResults(data);
+            }
+        }
+    }
+    
     getTeamSlug(teamName) {
         const slugMap = {
             'Arizona Diamondbacks': 'dbacks',

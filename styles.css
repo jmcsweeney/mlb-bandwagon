@@ -780,6 +780,132 @@ header p {
     gap: 1rem;
 }
 
+.game-completed-alert {
+    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+    border: 2px solid #fca5a5;
+    border-radius: 16px;
+    padding: 2rem;
+    text-align: center;
+    margin: 1rem 0;
+    box-shadow: 0 8px 24px rgba(220, 38, 38, 0.3);
+    animation: alertPulse 2s ease-in-out infinite;
+}
+
+.game-completed-alert h4 {
+    color: #ffffff;
+    font-size: 1.3rem;
+    margin-bottom: 1rem;
+    font-weight: 700;
+}
+
+.game-completed-alert p {
+    color: #fecaca;
+    margin-bottom: 0.75rem;
+    font-size: 1rem;
+    font-weight: 500;
+}
+
+.refresh-btn {
+    background: linear-gradient(135deg, #ffffff 0%, #f3f4f6 100%);
+    color: #1f2937;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-top: 1rem;
+    font-family: inherit;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.refresh-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+}
+
+@keyframes alertPulse {
+    0%, 100% {
+        box-shadow: 0 8px 24px rgba(220, 38, 38, 0.3);
+    }
+    50% {
+        box-shadow: 0 12px 32px rgba(220, 38, 38, 0.5);
+    }
+}
+
+.count-display {
+    display: flex;
+    gap: 1rem;
+    margin-top: 0.5rem;
+    justify-content: center;
+}
+
+.count-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.count-label {
+    font-size: 0.7rem;
+    color: #a0a0a0;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.count-value {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--accent-color);
+    min-width: 35px;
+    text-align: center;
+}
+
+.live-game-details {
+    margin-top: 1.5rem;
+    padding: 1.5rem;
+    background: rgba(10, 10, 10, 0.8);
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.05);
+}
+
+.current-players {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.player-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 1rem;
+    background: rgba(25, 25, 25, 0.9);
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.05);
+}
+
+.player-label {
+    font-size: 0.8rem;
+    color: #a0a0a0;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.player-name {
+    font-size: 0.9rem;
+    color: #ffffff;
+    font-weight: 600;
+    text-align: right;
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 
 @media (max-width: 768px) {
     .container {
@@ -870,6 +996,32 @@ header p {
     
     .win-streak-display h4 {
         font-size: 1.1rem;
+    }
+    
+    .count-display {
+        gap: 0.75rem;
+    }
+    
+    .count-value {
+        font-size: 1rem;
+        min-width: 30px;
+    }
+    
+    .live-game-details {
+        padding: 1rem;
+    }
+    
+    .player-info {
+        padding: 0.4rem 0.8rem;
+    }
+    
+    .player-label {
+        font-size: 0.75rem;
+    }
+    
+    .player-name {
+        font-size: 0.8rem;
+        max-width: 120px;
     }
 }
 
