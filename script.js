@@ -709,7 +709,11 @@ class MLBBandwagon {
 
     async getActiveGame(teamId) {
         try {
-            const today = new Date().toISOString().split('T')[0];
+            const now = new Date();
+            const today = now.getFullYear() + '-' + 
+                         String(now.getMonth() + 1).padStart(2, '0') + '-' + 
+                         String(now.getDate()).padStart(2, '0');
+            
             const response = await fetch(
                 `https://statsapi.mlb.com/api/v1/schedule/games/?sportId=1&date=${today}&teamId=${teamId}&hydrate=team,linescore`
             );
@@ -718,12 +722,12 @@ class MLBBandwagon {
             if (data.dates && data.dates.length > 0) {
                 for (const date of data.dates) {
                     for (const game of date.games) {
-                        // Check if game is actively in progress (live only)
                         const gameStatus = game.status.statusCode;
                         
-                        // Only show games that are truly live/in progress
-                        // I = In Progress, exclude P = Pre-Game
-                        if (gameStatus === 'I') {
+                        // Check for games that are in progress only
+                        // I = In Progress, PW = Pre-Game (Warmup), IR = Inning Review, etc.
+                        if (gameStatus === 'I' || gameStatus === 'PW' || gameStatus === 'IR' || 
+                            gameStatus === 'MA' || gameStatus === 'DR' || gameStatus === 'DI') {
                             return {
                                 gamePk: game.gamePk,
                                 status: game.status.detailedState,
