@@ -855,13 +855,18 @@ class MLBBandwagon {
             `;
         }
         
+        // Hide count/outs when: 3 outs, 3 strikes, 4 balls, or end of inning
+        const shouldHideCount = live.outs >= 3 || live.strikes >= 3 || live.balls >= 4 || 
+                               (live.inningState && live.inningState.toLowerCase().includes('end'));
+        const hiddenClass = shouldHideCount ? ' hidden-content' : '';
+        
         return `
             <div class="count-display">
-                <div class="count-item">
+                <div class="count-item${hiddenClass}">
                     <span class="count-label">Count</span>
                     <span class="count-value">${live.balls}-${live.strikes}</span>
                 </div>
-                <div class="count-item">
+                <div class="count-item${hiddenClass}">
                     <span class="count-label">Outs</span>
                     <span class="count-value">${live.outs}</span>
                 </div>

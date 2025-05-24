@@ -863,6 +863,10 @@ header p {
     text-align: center;
 }
 
+.count-item.hidden-content {
+    visibility: hidden;
+}
+
 .live-game-details {
     margin-top: 1.5rem;
     padding: 1.5rem;
